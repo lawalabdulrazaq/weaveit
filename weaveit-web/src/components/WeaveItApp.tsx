@@ -2,6 +2,9 @@
 
 import type React from "react"
 import { useState, useRef } from "react"
+import { useWallet } from "@solana/wallet-adapter-react"
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui"
+import { useSolanaPayment } from "../../hooks/use-solana-payment"
 import {
   Download,
   Play,
@@ -257,7 +260,7 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ videoUrl, title = "Generate
   )
 }
 
-// Enhanced Script Form Component
+// Enhanced Script Form Component with Payment Integration
 interface ScriptFormProps {
   onVideoGenerated: (videoUrl: string, title: string) => void
 }
@@ -269,6 +272,9 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onVideoGenerated }) => {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [loadingStep, setLoadingStep] = useState("")
+  const [paymentProcessing, setPaymentProcessing] = useState(false)
+
+  const { sendPayment, getSolPrice, isProcessing } = useSolanaPayment()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -287,15 +293,24 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onVideoGenerated }) => {
     setError("")
     setSuccess("")
 
-    const steps = [
-      "Analyzing your script...",
-      "Generating AI narration...",
-      "Creating visual elements...",
-      "Rendering video...",
-      "Finalizing output...",
-    ]
-
     try {
+      setLoadingStep("Processing payment...")
+      setPaymentProcessing(true)
+
+      const paymentResult = await sendPayment(0.5) // $0.50 in SOL
+      console.log("[v0] Payment completed:", paymentResult)
+
+      setPaymentProcessing(false)
+      setLoadingStep("Payment confirmed! Generating video...")
+
+      const steps = [
+        "Analyzing your script...",
+        "Generating AI narration...",
+        "Creating visual elements...",
+        "Rendering video...",
+        "Finalizing output...",
+      ]
+
       for (let i = 0; i < steps.length; i++) {
         setLoadingStep(steps[i])
         await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -306,11 +321,19 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onVideoGenerated }) => {
 
       setScript("")
       setTitle("")
-    } catch (err) {
-      setError("Failed to generate video. Please try again.")
+    } catch (err: any) {
+      console.error("[v0] Generation failed:", err)
+      if (err.message?.includes("Wallet not connected")) {
+        setError("Please connect your wallet to generate videos")
+      } else if (err.message?.includes("insufficient funds")) {
+        setError("Insufficient SOL balance for payment")
+      } else {
+        setError("Failed to process payment or generate video. Please try again.")
+      }
     } finally {
       setLoading(false)
       setLoadingStep("")
+      setPaymentProcessing(false)
     }
   }
 
@@ -396,12 +419,12 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onVideoGenerated }) => {
       {/* Generation Button */}
       <button
         type="submit"
-        disabled={loading || !script.trim() || !title.trim()}
+        disabled={loading || !script.trim() || !title.trim() || isProcessing}
         className={`
           relative overflow-hidden w-full py-6 px-8 rounded-xl font-semibold text-lg
           flex items-center justify-center space-x-3
           ${
-            loading
+            loading || isProcessing
               ? "bg-gray-700/50 cursor-not-allowed"
               : "bg-gradient-to-r from-weaveit-500 to-weaveit-600 hover:from-weaveit-600 hover:to-weaveit-700"
           }
@@ -411,18 +434,18 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onVideoGenerated }) => {
           border border-weaveit-500/20
         `}
       >
-        {loading ? (
+        {loading || paymentProcessing ? (
           <div className="flex flex-col items-center space-y-2">
             <div className="flex items-center space-x-3">
               <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
-              <span>Generating Your Video...</span>
+              <span>{paymentProcessing ? "Processing Payment..." : "Generating Your Video..."}</span>
             </div>
             {loadingStep && <span className="text-sm text-weaveit-200">{loadingStep}</span>}
           </div>
         ) : (
           <>
             <Zap className="w-6 h-6" />
-            <span>Generate Tutorial Video</span>
+            <span>Generate Tutorial Video ($0.50)</span>
             <ArrowRight className="w-6 h-6" />
           </>
         )}
@@ -497,30 +520,11 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onVideoGenerated }) => {
 
 // Enhanced Wallet Connect Component
 const WalletConnect: React.FC<{ onConnect: () => void }> = ({ onConnect }) => {
-  const [connecting, setConnecting] = useState(false)
-  const [selectedWallet, setSelectedWallet] = useState<string | null>(null)
+  const { connected, connecting } = useWallet()
 
-  const wallets = [
-    { name: "Phantom", icon: "👻", popular: true },
-    { name: "Backpack", icon: "🎒", popular: true },
-    { name: "Solflare", icon: "☀️", popular: false },
-    { name: "Glow", icon: "✨", popular: false },
-  ]
-
-  const handleConnect = async (walletName: string) => {
-    setSelectedWallet(walletName)
-    setConnecting(true)
-
-    try {
-      // Simulate wallet connection without actual wallet integration
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      setConnecting(false)
-      onConnect()
-    } catch (error) {
-      console.error("Connection simulation error:", error)
-      setConnecting(false)
-      // Handle error gracefully without throwing
-    }
+  if (connected) {
+    onConnect()
+    return null
   }
 
   return (
@@ -528,18 +532,25 @@ const WalletConnect: React.FC<{ onConnect: () => void }> = ({ onConnect }) => {
       {connecting && (
         <div className="bg-weaveit-500/10 border border-weaveit-500/30 rounded-xl p-4 flex items-center space-x-3 backdrop-blur-sm">
           <div className="animate-spin rounded-full h-5 w-5 border-2 border-weaveit-500 border-t-transparent"></div>
-          <span className="text-white">Connecting to {selectedWallet}...</span>
+          <span className="text-white">Connecting to wallet...</span>
         </div>
       )}
 
-      {/* Wallet Options */}
+      <div className="flex justify-center">
+        <WalletMultiButton className="!bg-gradient-to-r !from-weaveit-500 !to-weaveit-600 hover:!from-weaveit-600 hover:!to-weaveit-700 !rounded-xl !font-semibold !py-4 !px-8 !text-lg !transition-all !duration-200 !transform hover:!scale-105" />
+      </div>
+
+      {/* Supported Wallets Info */}
       <div className="grid sm:grid-cols-2 gap-3">
-        {wallets.map((wallet) => (
-          <button
+        {[
+          { name: "Phantom", icon: "👻", popular: true },
+          { name: "Solflare", icon: "☀️", popular: true },
+          { name: "Alpha", icon: "🚀", popular: false },
+          { name: "Clover", icon: "🍀", popular: false },
+        ].map((wallet) => (
+          <div
             key={wallet.name}
-            onClick={() => handleConnect(wallet.name)}
-            disabled={connecting}
-            className="relative bg-gray-800/50 hover:bg-gray-700/50 border border-gray-700/50 hover:border-weaveit-500/50 rounded-xl p-4 transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 backdrop-blur-sm group"
+            className="relative bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 backdrop-blur-sm"
           >
             {wallet.popular && (
               <div className="absolute -top-2 -right-2 bg-weaveit-500 text-white text-xs px-2 py-1 rounded-full">
@@ -550,10 +561,10 @@ const WalletConnect: React.FC<{ onConnect: () => void }> = ({ onConnect }) => {
               <span className="text-2xl">{wallet.icon}</span>
               <div className="text-left">
                 <div className="text-white font-semibold">{wallet.name}</div>
-                <div className="text-gray-400 text-sm">Connect wallet</div>
+                <div className="text-gray-400 text-sm">Supported</div>
               </div>
             </div>
-          </button>
+          </div>
         ))}
       </div>
 
@@ -585,16 +596,16 @@ const WalletConnect: React.FC<{ onConnect: () => void }> = ({ onConnect }) => {
 
 // Main WeaveIt App Component
 export default function WeaveItApp() {
-  const [connected, setConnected] = useState(false)
+  const { connected, disconnect, publicKey } = useWallet()
   const [currentVideo, setCurrentVideo] = useState<{ url: string; title: string } | null>(null)
   const [videos, setVideos] = useState<Array<{ id: string; title: string; url: string; createdAt: string }>>([])
 
   const handleConnect = () => {
-    setConnected(true)
+    // Connection is handled by the wallet adapter
   }
 
   const handleDisconnect = () => {
-    setConnected(false)
+    disconnect()
     setCurrentVideo(null)
   }
 
@@ -653,7 +664,9 @@ export default function WeaveItApp() {
                 </div>
                 <div>
                   <div className="text-sm text-white font-medium">Connected</div>
-                  <div className="text-xs text-gray-400">Solana Wallet</div>
+                  <div className="text-xs text-gray-400">
+                    {publicKey?.toString().slice(0, 4)}...{publicKey?.toString().slice(-4)}
+                  </div>
                 </div>
               </div>
 

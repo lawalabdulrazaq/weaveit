@@ -1,12 +1,14 @@
-import type { Metadata } from 'next'
-import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
-import './globals.css'
+import type React from "react"
+import type { Metadata } from "next"
+import { GeistSans } from "geist/font/sans"
+import { GeistMono } from "geist/font/mono"
+import "./globals.css"
+import { SolanaWalletProvider } from "../components/wallet-provider"
 
 export const metadata: Metadata = {
-  title: 'Weaveit Agent',
-  description: 'Tutorial generator - from script to video',
-  generator: 'Weaveit',
+  title: "WeaveIt - AI Video Generator",
+  description: "Transform your code into professional tutorial videos with AI",
+  generator: "v0.app",
 }
 
 export default function RootLayout({
@@ -25,7 +27,9 @@ html {
 }
         `}</style>
       </head>
-      <body>{children}</body>
+      <body>
+        <SolanaWalletProvider>{children}</SolanaWalletProvider>
+      </body>
     </html>
   )
 }
