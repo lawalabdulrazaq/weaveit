@@ -8,7 +8,7 @@ import { SolanaWalletProvider } from "../components/wallet-provider"
 export const metadata: Metadata = {
   title: "WeaveIt - AI Video Generator",
   description: "Transform your code into professional tutorial videos with AI",
-  generator: "v0.app",
+  generator: "weaveit-web",
 }
 
 export default function RootLayout({

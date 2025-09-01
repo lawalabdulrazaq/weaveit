@@ -4,7 +4,7 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react"
 import { PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js"
 import { useCallback, useState } from "react"
 
-const PAYMENT_WALLET = new PublicKey("8SBLkHEM1df3TTXpaZGoY14f5xxQAwskEKEoTuHbCzKP") // Ragnar address
+const PAYMENT_WALLET = new PublicKey("8SBLkHEM1df3TTXpaZGoY14f5xxQAwskEKEoTuHbCzKP")
 
 export function useSolanaPayment() {
   const { connection } = useConnection()
@@ -14,17 +14,18 @@ export function useSolanaPayment() {
   const sendPayment = useCallback(
     async (amountUSD = 0.5) => {
       if (!publicKey || !sendTransaction) {
-        throw new Error("Wallet not connected")
+        setIsProcessing(false);
+        return { success: false, error: "Wallet not connected" };
       }
 
-      setIsProcessing(true)
+      setIsProcessing(true);
 
       try {
         // Get current SOL price in USD (you might want to use a real price API)
         // For now, using a placeholder conversion rate
-        const solPriceUSD = 100 // Replace with actual SOL price fetching
-        const solAmount = amountUSD / solPriceUSD
-        const lamports = Math.floor(solAmount * LAMPORTS_PER_SOL)
+        const solPriceUSD = 100; // Replace with actual SOL price fetching
+        const solAmount = amountUSD / solPriceUSD;
+        const lamports = Math.floor(solAmount * LAMPORTS_PER_SOL);
 
         // Create transaction
         const transaction = new Transaction().add(
@@ -32,31 +33,31 @@ export function useSolanaPayment() {
             fromPubkey: publicKey,
             toPubkey: PAYMENT_WALLET,
             lamports,
-          }),
-        )
+          })
+        );
 
         // Get recent blockhash
-        const { blockhash } = await connection.getLatestBlockhash()
-        transaction.recentBlockhash = blockhash
-        transaction.feePayer = publicKey
+        const { blockhash } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = publicKey;
 
         // Send transaction
-        const signature = await sendTransaction(transaction, connection)
+        const signature = await sendTransaction(transaction, connection);
 
         // Wait for confirmation
-        await connection.confirmTransaction(signature, "confirmed")
+        await connection.confirmTransaction(signature, "confirmed");
 
-        console.log("[v0] Payment successful:", signature)
-        return { success: true, signature, amount: solAmount }
+        console.log("Payment successful:", signature);
+        setIsProcessing(false);
+        return { success: true, signature, amount: solAmount };
       } catch (error) {
-        console.error("[v0] Payment failed:", error)
-        throw error
-      } finally {
-        setIsProcessing(false)
+        console.error("Payment failed:", error);
+        setIsProcessing(false);
+        return { success: false, error: (error instanceof Error ? error.message : String(error)) };
       }
     },
     [connection, publicKey, sendTransaction],
-  )
+  );
 
   const getSolPrice = useCallback(async () => {
     try {
@@ -65,7 +66,7 @@ export function useSolanaPayment() {
       const data = await response.json()
       return data.solana.usd
     } catch (error) {
-      console.error("[v0] Failed to fetch SOL price:", error)
+      console.error("Failed to fetch SOL price:", error)
       return 100 // Fallback price
     }
   }, [])

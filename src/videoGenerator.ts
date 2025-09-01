@@ -463,15 +463,15 @@ export async function generateScrollingScriptVideo(script: string, audioPath: st
   const fontFamily = 'Arial, sans-serif';
   const textColor = '#222';
   const bgColor = '#fff';
-
-  // Create a dummy canvas to measure text
-  const dummyCanvas = createCanvas(width, height);
-  const ctx = dummyCanvas.getContext('2d');
-  ctx.font = `${fontSize}px ${fontFamily}`;
-
-  // Split script into paragraphs first, then lines
-  const paragraphs = script.split(/\n\s*\n/);  // Split on empty lines
-  const wrappedLines: string[] = [];
+  try {
+    // Create a dummy canvas to measure text
+    const dummyCanvas = createCanvas(width, height);
+    const ctx = dummyCanvas.getContext('2d');
+    ctx.font = `${fontSize}px ${fontFamily}`;
+  
+    // Split script into paragraphs first, then lines
+    const paragraphs = script.split(/\n\s*\n/);  // Split on empty lines
+    const wrappedLines: string[] = [];
   
   // Track text density and complexity for each section
   interface SectionInfo {
@@ -583,14 +583,19 @@ export async function generateScrollingScriptVideo(script: string, audioPath: st
   await new Promise<void>((resolve, reject) => {
     stream.pipe(out);
     out.on('finish', resolve);
-    out.on('error', reject);
+    out.on('error', (err) => {
+      console.error('Error saving scroll image:', err);
+      reject(err);
+    });
   });
+  if (!fs.existsSync(tallImagePath)) {
+    throw new Error('Scroll image not created: ' + tallImagePath);
+  }
 
   // Get audio duration
   const duration = await getAudioDuration(audioPath);
   console.log(`Audio duration: ${duration}s`);
   console.log(`Image height: ${totalHeight}px`);
-
   // Calculate time allocations for each section based on complexity
   const totalComplexity = sections.reduce((sum, section) => sum + section.complexity, 0);
   const initialDelay = 6; // Increased initial delay to 6 seconds
@@ -684,6 +689,10 @@ export async function generateScrollingScriptVideo(script: string, audioPath: st
       })
       .save(outputPath.replace(/\.mp4$/, '_video.mp4'));
   });
+    const tempVideoPath = outputPath.replace(/\.mp4$/, '_video.mp4');
+    if (!fs.existsSync(tempVideoPath)) {
+      throw new Error('Scroll video not created: ' + tempVideoPath);
+    }
 
   // Merge with audio using improved sync parameters
   await new Promise<void>((resolve, reject) => {
@@ -728,8 +737,18 @@ export async function generateScrollingScriptVideo(script: string, audioPath: st
       })
       .save(outputPath);
   });
-
-  // Cleanup temp files
-  fs.unlinkSync(tallImagePath);
-  fs.unlinkSync(outputPath.replace(/\.mp4$/, '_video.mp4'));
+    if (!fs.existsSync(outputPath)) {
+      throw new Error('Final video not created: ' + outputPath);
+    }
+    const stats = fs.statSync(outputPath);
+    if (!stats || stats.size < 1000) {
+      throw new Error('Final video file is empty or too small: ' + outputPath + ' Size: ' + stats.size);
+    }
+    // Cleanup temp files
+    fs.unlinkSync(tallImagePath);
+    fs.unlinkSync(tempVideoPath);
+  } catch (err) {
+    console.error('❌ Error in generateScrollingScriptVideo:', err);
+    throw err;
+  }
 }

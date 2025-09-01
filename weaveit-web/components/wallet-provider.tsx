@@ -17,11 +17,31 @@ import { clusterApiUrl } from "@solana/web3.js"
 import "@solana/wallet-adapter-react-ui/styles.css"
 
 export function SolanaWalletProvider({ children }: { children: React.ReactNode }) {
-  // The network can be set to 'devnet', 'testnet', or 'mainnet-beta'
-  const network = WalletAdapterNetwork.Mainnet
+  const network =
+    process.env.NEXT_PUBLIC_SOLANA_NETWORK === "mainnet" ? WalletAdapterNetwork.Mainnet : WalletAdapterNetwork.Devnet
 
-  // You can also provide a custom RPC endpoint
-  const endpoint = useMemo(() => clusterApiUrl(network), [network])
+  const endpoint = useMemo(() => {
+    // Try to use custom RPC URL from environment first
+    if (process.env.NEXT_PUBLIC_SOLANA_RPC_URL) {
+      return process.env.NEXT_PUBLIC_SOLANA_RPC_URL
+    }
+
+    const devnetEndpoints = [
+      "https://api.devnet.solana.com",
+      "https://devnet.helius-rpc.com",
+      clusterApiUrl(WalletAdapterNetwork.Devnet),
+    ]
+
+    const mainnetEndpoints = [
+      "https://api.mainnet-beta.solana.com",
+      "https://solana-api.projectserum.com",
+      "https://rpc.ankr.com/solana",
+      clusterApiUrl(WalletAdapterNetwork.Mainnet),
+    ]
+
+    const endpoints = network === WalletAdapterNetwork.Devnet ? devnetEndpoints : mainnetEndpoints
+    return endpoints[0] // Use the first reliable endpoint
+  }, [network])
 
   const wallets = useMemo(
     () => [
