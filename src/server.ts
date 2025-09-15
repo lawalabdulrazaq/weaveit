@@ -1,10 +1,19 @@
 import express from 'express';
 import cors from 'cors';
-import { generateVideo, generateScrollingScriptVideo } from './videoGenerator';
-import { generateSpeech } from './textToSpeech';
-import { enhanceScript } from './codeAnalyzer';
+import { generateVideo, generateScrollingScriptVideo } from './videoGenerator.js';
+import { generateSpeech } from './textToSpeech.js';
+import { enhanceScript } from './codeAnalyzer.js';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+// Load environment variables from root .env file
+dotenv.config({ path: path.join(process.cwd(), '.env') });
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = 3001;
@@ -13,12 +22,15 @@ app.use(cors());
 app.use(express.json());
 app.use('/output', express.static(path.join(__dirname, 'output')));
 
-
 // Video generation endpoint
 app.post('/api/generate', async (req, res) => {
   try {
     const { script, title, walletAddress, transactionSignature } = req.body;
-    console.log('Processing tutorial request:', title);
+    console.log('Processing tutorial request:', { title, transactionSignature });
+
+    if (!transactionSignature) {
+      throw new Error('Transaction signature is required');
+    }
 
     // Get the AI explanation for narration (not for display)
     const explanation = await enhanceScript(script);

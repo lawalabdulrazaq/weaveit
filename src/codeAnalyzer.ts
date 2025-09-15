@@ -1,6 +1,6 @@
 import { OpenAI } from 'openai';
 import { config } from 'dotenv';
-import { TutorialResult } from './types';
+import { TutorialResult } from './types.js';
 
 config();
 

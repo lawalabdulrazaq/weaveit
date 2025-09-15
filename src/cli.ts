@@ -3,9 +3,9 @@
 import { Command } from 'commander';
 import fs from 'fs';
 import path from 'path';
-import { analyzeCode } from './codeAnalyzer';
-import { generateSpeech } from './textToSpeech';
-import { generateVideo } from './videoGenerator';
+import { analyzeCode } from './codeAnalyzer.js';
+import { generateSpeech } from './textToSpeech.js';
+import { generateVideo } from './videoGenerator.js';
 
 const program = new Command();
 

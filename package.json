@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "A solana package to generate tutorial videos from text and audio",
   "main": "dist/index.js",
-  "types": "module",
+  "type": "module",
   "scripts": {
-    "dev": "./node_modules/.bin/ts-node-dev --respawn src/server.ts",
+    "dev": "node --loader ts-node/esm src/server.ts",
     "start": "node dist/server.js",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",

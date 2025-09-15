@@ -25,29 +25,16 @@ import {
   Maximize,
   Zap,
   Shield,
-  Music,
-  VideoIcon,
-  Headphones,
 } from "lucide-react"
 
-type OutputType = "video" | "audio" | "both"
-
-// Enhanced Content Display Component (handles both video and audio)
-interface ContentDisplayProps {
-  contentUrl: string
-  audioUrl?: string
+// Enhanced Video Display Component
+interface VideoDisplayProps {
+  videoUrl: string
   title?: string
-  outputType: OutputType
   onClose?: () => void
 }
 
-const ContentDisplay: React.FC<ContentDisplayProps> = ({
-  contentUrl,
-  audioUrl,
-  title = "Generated Content",
-  outputType,
-  onClose,
-}) => {
+const VideoDisplay: React.FC<VideoDisplayProps> = ({ videoUrl, title = "Generated Tutorial Video", onClose }) => {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [showControls, setShowControls] = useState(true)
@@ -55,34 +42,22 @@ const ContentDisplay: React.FC<ContentDisplayProps> = ({
   const [duration, setDuration] = useState(0)
   const [currentTime, setCurrentTime] = useState(0)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const audioRef = useRef<HTMLAudioElement>(null)
 
-  const handleDownload = async (url: string, filename: string) => {
+  const handleDownload = async () => {
     try {
-      const response = await fetch(url)
+      const response = await fetch(videoUrl)
       const blob = await response.blob()
-      const downloadUrl = window.URL.createObjectURL(blob)
+      const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
-      a.href = downloadUrl
-      a.download = filename
+      a.href = url
+      a.download = `${title.replace(/[^a-zA-Z0-9]/g, "_")}.mp4`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      window.URL.revokeObjectURL(downloadUrl)
+      window.URL.revokeObjectURL(url)
     } catch (error) {
       console.error("Download failed:", error)
     }
-  }
-
-  const handleVideoDownload = () => {
-    const filename = `${title.replace(/[^a-zA-Z0-9]/g, "_")}.mp4`
-    handleDownload(contentUrl, filename)
-  }
-
-  const handleAudioDownload = () => {
-    const filename = `${title.replace(/[^a-zA-Z0-9]/g, "_")}.mp3`
-    const url = audioUrl || contentUrl
-    handleDownload(url, filename)
   }
 
   const handleShare = async () => {
@@ -90,18 +65,19 @@ const ContentDisplay: React.FC<ContentDisplayProps> = ({
       try {
         await navigator.share({
           title: title,
-          text: `Check out this AI-generated ${outputType === "audio" ? "audio" : "tutorial"}!`,
-          url: contentUrl,
+          text: "Check out this AI-generated tutorial video!",
+          url: videoUrl,
         })
       } catch (error) {
         console.error("Error sharing:", error)
       }
     } else {
       try {
-        await navigator.clipboard.writeText(contentUrl)
+        await navigator.clipboard.writeText(videoUrl)
+        // Show toast notification
         const toast = document.createElement("div")
         toast.className = "fixed top-4 right-4 bg-weaveit-500 text-white px-4 py-2 rounded-lg shadow-lg z-50"
-        toast.textContent = "Content URL copied to clipboard!"
+        toast.textContent = "Video URL copied to clipboard!"
         document.body.appendChild(toast)
         setTimeout(() => document.body.removeChild(toast), 3000)
       } catch (error) {
@@ -111,26 +87,24 @@ const ContentDisplay: React.FC<ContentDisplayProps> = ({
   }
 
   const togglePlay = () => {
-    const mediaElement = outputType === "audio" ? audioRef.current : videoRef.current
-    if (mediaElement) {
+    if (videoRef.current) {
       if (isPlaying) {
-        mediaElement.pause()
+        videoRef.current.pause()
       } else {
-        mediaElement.play()
+        videoRef.current.play()
       }
     }
   }
 
   const toggleMute = () => {
-    const mediaElement = outputType === "audio" ? audioRef.current : videoRef.current
-    if (mediaElement) {
-      mediaElement.muted = !isMuted
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted
       setIsMuted(!isMuted)
     }
   }
 
   const toggleFullscreen = () => {
-    if (videoRef.current && videoRef.current.requestFullscreen && outputType !== "audio") {
+    if (videoRef.current && videoRef.current.requestFullscreen) {
       videoRef.current.requestFullscreen()
     }
   }
@@ -141,46 +115,24 @@ const ContentDisplay: React.FC<ContentDisplayProps> = ({
     return `${minutes}:${seconds.toString().padStart(2, "0")}`
   }
 
-  const getContentIcon = () => {
-    switch (outputType) {
-      case "audio":
-        return <Headphones className="w-6 h-6 text-white" />
-      case "video":
-        return <Play className="w-6 h-6 text-white" />
-      case "both":
-        return <VideoIcon className="w-6 h-6 text-white" />
-    }
-  }
-
-  const getContentTypeLabel = () => {
-    switch (outputType) {
-      case "audio":
-        return "AI-generated audio"
-      case "video":
-        return "AI-generated tutorial video"
-      case "both":
-        return "AI-generated video with audio"
-    }
-  }
-
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <div className="w-12 h-12 bg-gradient-to-r from-weaveit-500 to-weaveit-600 rounded-xl flex items-center justify-center">
-            {getContentIcon()}
+            <Play className="w-6 h-6 text-white" />
           </div>
           <div>
             <h3 className="text-2xl font-bold text-white">{title}</h3>
-            <p className="text-sm text-gray-400">{getContentTypeLabel()}</p>
+            <p className="text-sm text-gray-400">AI-generated tutorial video</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={handleShare}
             className="bg-gray-800/50 hover:bg-weaveit-500/20 text-white p-3 rounded-xl transition-all duration-200 hover:scale-105 backdrop-blur-sm border border-gray-700/50"
-            title="Share content"
+            title="Share video"
           >
             <Share2 className="w-5 h-5" />
           </button>
@@ -188,7 +140,7 @@ const ContentDisplay: React.FC<ContentDisplayProps> = ({
             <button
               onClick={onClose}
               className="bg-gray-800/50 hover:bg-red-500/20 text-white p-3 rounded-xl transition-all duration-200 hover:scale-105 backdrop-blur-sm border border-gray-700/50"
-              title="Close content"
+              title="Close video"
             >
               <LogOut className="w-5 h-5" />
             </button>
@@ -196,59 +148,31 @@ const ContentDisplay: React.FC<ContentDisplayProps> = ({
         </div>
       </div>
 
-      {/* Content Container */}
+      {/* Video Container */}
       <div
         className="relative bg-black rounded-2xl overflow-hidden shadow-2xl group border border-gray-800/50"
         onMouseEnter={() => setShowControls(true)}
         onMouseLeave={() => setShowControls(false)}
       >
-        {outputType === "audio" ? (
-          <div className="w-full h-64 bg-gradient-to-br from-purple-900/20 to-blue-900/20 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-20 h-20 bg-weaveit-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Music className="w-10 h-10 text-weaveit-400" />
-              </div>
-              <h4 className="text-white font-semibold mb-2">Audio Content</h4>
-              <p className="text-gray-400 text-sm">Click play to listen</p>
-            </div>
-            <audio
-              ref={audioRef}
-              src={contentUrl}
-              preload="metadata"
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              onTimeUpdate={(e) => {
-                const audio = e.target as HTMLAudioElement
-                setCurrentTime(audio.currentTime)
-                setProgress((audio.currentTime / audio.duration) * 100)
-              }}
-              onLoadedMetadata={(e) => {
-                const audio = e.target as HTMLAudioElement
-                setDuration(audio.duration)
-              }}
-            />
-          </div>
-        ) : (
-          <video
-            ref={videoRef}
-            src={contentUrl}
-            className="w-full h-auto max-h-[60vh] object-contain"
-            preload="metadata"
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
-            onTimeUpdate={(e) => {
-              const video = e.target as HTMLVideoElement
-              setCurrentTime(video.currentTime)
-              setProgress((video.currentTime / video.duration) * 100)
-            }}
-            onLoadedMetadata={(e) => {
-              const video = e.target as HTMLVideoElement
-              setDuration(video.duration)
-            }}
-          >
-            Your browser does not support the video tag.
-          </video>
-        )}
+        <video
+          ref={videoRef}
+          src="/placeholder.svg?height=500&width=900&text=Sample+Tutorial+Video"
+          className="w-full h-auto max-h-[60vh] object-contain"
+          preload="metadata"
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onTimeUpdate={(e) => {
+            const video = e.target as HTMLVideoElement
+            setCurrentTime(video.currentTime)
+            setProgress((video.currentTime / video.duration) * 100)
+          }}
+          onLoadedMetadata={(e) => {
+            const video = e.target as HTMLVideoElement
+            setDuration(video.duration)
+          }}
+        >
+          Your browser does not support the video tag.
+        </video>
 
         {/* Custom Controls Overlay */}
         <div
@@ -283,50 +207,36 @@ const ContentDisplay: React.FC<ContentDisplayProps> = ({
               </span>
             </div>
 
-            {outputType !== "audio" && (
-              <button
-                onClick={toggleFullscreen}
-                className="bg-gray-800/70 hover:bg-gray-700 text-white p-2 rounded-full transition-all duration-200"
-              >
-                <Maximize className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={toggleFullscreen}
+              className="bg-gray-800/70 hover:bg-gray-700 text-white p-2 rounded-full transition-all duration-200"
+            >
+              <Maximize className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
 
       {/* Action Buttons */}
       <div className="flex flex-wrap gap-4">
-        {(outputType === "video" || outputType === "both") && (
-          <button
-            onClick={handleVideoDownload}
-            className="flex-1 min-w-[200px] bg-gradient-to-r from-weaveit-500 to-weaveit-600 hover:from-weaveit-600 hover:to-weaveit-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl"
-          >
-            <Download className="w-5 h-5" />
-            <span>Download Video</span>
-          </button>
-        )}
-
-        {(outputType === "audio" || outputType === "both") && (
-          <button
-            onClick={handleAudioDownload}
-            className="flex-1 min-w-[200px] bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl"
-          >
-            <Download className="w-5 h-5" />
-            <span>Download Audio</span>
-          </button>
-        )}
+        <button
+          onClick={handleDownload}
+          className="flex-1 min-w-[200px] bg-gradient-to-r from-weaveit-500 to-weaveit-600 hover:from-weaveit-600 hover:to-weaveit-700 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-[1.02] flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl"
+        >
+          <Download className="w-5 h-5" />
+          <span>Download Video</span>
+        </button>
 
         <button
           onClick={handleShare}
           className="flex-1 min-w-[200px] bg-gray-800/50 hover:bg-gray-700/50 text-white font-semibold py-4 px-6 rounded-xl border border-gray-700/50 hover:border-weaveit-500/50 transition-all duration-200 flex items-center justify-center space-x-3 backdrop-blur-sm"
         >
           <Share2 className="w-5 h-5" />
-          <span>Share Content</span>
+          <span>Share Video</span>
         </button>
       </div>
 
-      {/* Content Stats */}
+      {/* Video Stats */}
       <div className="grid sm:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-weaveit-500/10 to-weaveit-600/10 rounded-xl p-4 border border-weaveit-500/20 text-center backdrop-blur-sm">
           <div className="text-3xl mb-2">✨</div>
@@ -350,15 +260,14 @@ const ContentDisplay: React.FC<ContentDisplayProps> = ({
   )
 }
 
-// Enhanced Script Form Component with Output Type Selection
+// Enhanced Script Form Component with Payment Integration
 interface ScriptFormProps {
-  onContentGenerated: (contentUrl: string, title: string, outputType: OutputType, audioUrl?: string) => void
+  onVideoGenerated: (videoUrl: string, title: string) => void
 }
 
-const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
+const ScriptForm: React.FC<ScriptFormProps> = ({ onVideoGenerated }) => {
   const [script, setScript] = useState("")
   const [title, setTitle] = useState("")
-  const [outputType, setOutputType] = useState<OutputType>("video") // Added output type state
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -368,29 +277,16 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
 
   const { sendPayment, getSolPrice, isProcessing } = useSolanaPayment()
 
-  const getPrice = () => {
-    switch (outputType) {
-      case "audio":
-        return 0.25 // $0.25 for audio only
-      case "video":
-        return 0.5 // $0.50 for video
-      case "both":
-        return 0.65 // $0.65 for both
-      default:
-        return 0.5
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!script.trim()) {
-      setError("Please enter a script for your content")
+      setError("Please enter a script for your tutorial")
       return
     }
 
     if (!title.trim()) {
-      setError("Please enter a title for your content")
+      setError("Please enter a title for your video")
       return
     }
 
@@ -402,12 +298,11 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
       setLoadingStep("Processing payment...")
       setPaymentProcessing(true)
 
-      const price = getPrice()
-      const paymentResult = await sendPayment(price)
+      const paymentResult = await sendPayment(0.5) // $0.50 in SOL
       console.log("Payment completed:", paymentResult)
 
       setPaymentProcessing(false)
-      setLoadingStep("Payment confirmed! Generating content...")
+      setLoadingStep("Payment confirmed! Generating video...")
 
       const response = await fetch("/api/videos/generate", {
         method: "POST",
@@ -417,29 +312,28 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
         body: JSON.stringify({
           script,
           title,
-          outputType, // Include output type in request
           paymentSignature: paymentResult.signature,
           walletAddress: publicKey?.toBase58(),
         }),
       })
 
       if (!response.ok) {
-        throw new Error("Failed to start content generation")
+        throw new Error("Failed to start video generation")
       }
 
-      const contentData = await response.json()
-      console.log("[v0] Content generation started:", contentData)
+      const videoData = await response.json()
+      console.log("[v0] Video generation started:", videoData)
 
-      setLoadingStep("Generating AI content...")
-      await pollContentStatus(contentData.contentId, contentData.title, outputType)
+      setLoadingStep("Generating AI narration...")
+      await pollVideoStatus(videoData.videoId, videoData.title)
     } catch (err: any) {
       console.error("[v0] Generation failed:", err)
       if (err.message?.includes("Wallet not connected")) {
-        setError("Please connect your wallet to generate content")
+        setError("Please connect your wallet to generate videos")
       } else if (err.message?.includes("insufficient funds")) {
         setError("Insufficient SOL balance for payment")
       } else {
-        setError("Failed to process payment or generate content. Please try again.")
+        setError("Failed to process payment or generate video. Please try again.")
       }
     } finally {
       setLoading(false)
@@ -448,72 +342,45 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
     }
   }
 
-  const pollContentStatus = async (contentId: string, contentTitle: string, type: OutputType) => {
-    const getSteps = () => {
-      switch (type) {
-        case "audio":
-          return [
-            "Analyzing your script...",
-            "Generating AI narration...",
-            "Processing audio...",
-            "Finalizing output...",
-          ]
-        case "video":
-          return [
-            "Analyzing your script...",
-            "Generating AI narration...",
-            "Creating visual elements...",
-            "Rendering video...",
-            "Finalizing output...",
-          ]
-        case "both":
-          return [
-            "Analyzing your script...",
-            "Generating AI narration...",
-            "Creating visual elements...",
-            "Rendering video...",
-            "Processing audio...",
-            "Finalizing outputs...",
-          ]
-      }
-    }
+  const pollVideoStatus = async (videoId: string, videoTitle: string) => {
+    const steps = [
+      "Analyzing your script...",
+      "Generating AI narration...",
+      "Creating visual elements...",
+      "Rendering video...",
+      "Finalizing output...",
+    ]
 
-    const steps = getSteps()
     let stepIndex = 0
-    const maxAttempts = 120 // 10 minutes total (120 * 5 seconds)
+    const maxAttempts = 60 // 5 minutes max
     let attempts = 0
 
     const poll = async () => {
       try {
-        const contentUrl = `/api/videos/${contentId}${type === "audio" ? ".mp3" : ".mp4"}`
-        const contentResponse = await fetch(contentUrl, { method: "HEAD" })
+        const statusResponse = await fetch(`/api/videos/status/${videoId}`)
+        const statusData = await statusResponse.json()
 
-        if (contentResponse.ok) {
-          setSuccess(
-            `${type === "audio" ? "Audio" : type === "video" ? "Video" : "Content"} generated successfully! 🎉`,
-          )
-
-          const audioUrl = type === "both" ? `/api/videos/${contentId}.mp3` : undefined
-          onContentGenerated(contentUrl, contentTitle, type, audioUrl)
+        if (statusData.ready) {
+          setSuccess("Video generated successfully! 🎉")
+          onVideoGenerated(statusData.videoUrl, videoTitle)
           setScript("")
           setTitle("")
           return
         }
 
+        // Update loading step
         if (stepIndex < steps.length - 1) {
-          const progressRate = Math.floor(attempts / (maxAttempts / steps.length))
-          if (progressRate > stepIndex) {
-            stepIndex = Math.min(progressRate, steps.length - 1)
-          }
           setLoadingStep(steps[stepIndex])
+          stepIndex++
         }
 
         attempts++
         if (attempts >= maxAttempts) {
-          throw new Error("Content generation timed out. Please try again with a shorter script.")
+          throw new Error("Video generation timed out")
         }
 
-        setTimeout(poll, 5000)
+        // Continue polling
+        setTimeout(poll, 5000) // Check every 5 seconds
       } catch (error) {
         console.error("[v0] Status polling error:", error)
         throw error
@@ -545,88 +412,29 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
       {/* Title Input */}
       <div className="space-y-2">
         <label htmlFor="title" className="block text-sm font-semibold text-white">
-          Content Title
+          Video Title
         </label>
         <input
           type="text"
           id="title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Enter a descriptive title for your content..."
+          placeholder="Enter a descriptive title for your tutorial video..."
           className="w-full px-4 py-4 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-weaveit-500 focus:border-transparent transition-all duration-200 backdrop-blur-sm"
           disabled={loading}
         />
-      </div>
-
-      <div className="space-y-3">
-        <label className="block text-sm font-semibold text-white">Output Type</label>
-        <div className="grid sm:grid-cols-3 gap-3">
-          <button
-            type="button"
-            onClick={() => setOutputType("video")}
-            className={`p-4 rounded-xl border transition-all duration-200 ${
-              outputType === "video"
-                ? "bg-weaveit-500/20 border-weaveit-500/50 text-white"
-                : "bg-gray-800/30 border-gray-700/50 text-gray-400 hover:bg-gray-800/50"
-            }`}
-            disabled={loading}
-          >
-            <div className="flex flex-col items-center space-y-2">
-              <VideoIcon className="w-6 h-6" />
-              <span className="font-semibold">Video Only</span>
-              <span className="text-xs">$0.50</span>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setOutputType("audio")}
-            className={`p-4 rounded-xl border transition-all duration-200 ${
-              outputType === "audio"
-                ? "bg-purple-500/20 border-purple-500/50 text-white"
-                : "bg-gray-800/30 border-gray-700/50 text-gray-400 hover:bg-gray-800/50"
-            }`}
-            disabled={loading}
-          >
-            <div className="flex flex-col items-center space-y-2">
-              <Headphones className="w-6 h-6" />
-              <span className="font-semibold">Audio Only</span>
-              <span className="text-xs">$0.25</span>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setOutputType("both")}
-            className={`p-4 rounded-xl border transition-all duration-200 ${
-              outputType === "both"
-                ? "bg-blue-500/20 border-blue-500/50 text-white"
-                : "bg-gray-800/30 border-gray-700/50 text-gray-400 hover:bg-gray-800/50"
-            }`}
-            disabled={loading}
-          >
-            <div className="flex flex-col items-center space-y-2">
-              <div className="flex items-center space-x-1">
-                <VideoIcon className="w-5 h-5" />
-                <Music className="w-5 h-5" />
-              </div>
-              <span className="font-semibold">Both</span>
-              <span className="text-xs">$0.65</span>
-            </div>
-          </button>
-        </div>
       </div>
 
       {/* Script Input */}
       <div className="space-y-2">
         <div className="flex justify-between items-center">
           <label htmlFor="script" className="block text-sm font-semibold text-white">
-            {outputType === "audio" ? "Audio Script" : outputType === "video" ? "Tutorial Script" : "Content Script"}
+            Tutorial Script
           </label>
           <div className="flex items-center space-x-4 text-xs">
             {script.trim() && (
               <>
-                <span className="text-gray-400">~{estimateVideoLength(script)} min content</span>
+                <span className="text-gray-400">~{estimateVideoLength(script)} min video</span>
                 <span className={`${scriptQuality.color} font-medium`}>{scriptQuality.quality}</span>
               </>
             )}
@@ -636,11 +444,7 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
           id="script"
           value={script}
           onChange={(e) => setScript(e.target.value)}
-          placeholder={`Enter your ${outputType === "audio" ? "audio narration" : "tutorial"} script here. ${
-            outputType === "audio"
-              ? "Describe what you want to narrate or explain in audio format..."
-              : "Explain your code, concepts, or step-by-step instructions..."
-          }`}
+          placeholder="Enter your tutorial script here. Explain your code, concepts, or step-by-step instructions that you want to turn into a video tutorial..."
           rows={12}
           className="w-full px-4 py-4 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-weaveit-500 focus:border-transparent transition-all duration-200 resize-vertical backdrop-blur-sm"
           disabled={loading}
@@ -687,21 +491,14 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
           <div className="flex flex-col items-center space-y-2">
             <div className="flex items-center space-x-3">
               <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
-              <span>
-                {paymentProcessing
-                  ? "Processing Payment..."
-                  : `Generating Your ${outputType === "audio" ? "Audio" : outputType === "video" ? "Video" : "Content"}...`}
-              </span>
+              <span>{paymentProcessing ? "Processing Payment..." : "Generating Your Video..."}</span>
             </div>
             {loadingStep && <span className="text-sm text-weaveit-200">{loadingStep}</span>}
           </div>
         ) : (
           <>
             <Zap className="w-6 h-6" />
-            <span>
-              Generate {outputType === "audio" ? "Audio" : outputType === "video" ? "Video" : "Content"} ($
-              {getPrice().toFixed(2)})
-            </span>
+            <span>Generate Tutorial Video ($0.50)</span>
             <ArrowRight className="w-6 h-6" />
           </>
         )}
@@ -725,8 +522,8 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
       {/* Cost Information */}
       <div className="bg-gradient-to-r from-weaveit-500/10 to-weaveit-600/10 border border-weaveit-500/30 rounded-xl p-6 backdrop-blur-sm">
         <div className="flex items-center space-x-3 mb-3">
-          <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center">
-            <DollarSign className="w-5 h-5 text-blue-400" />
+          <div className="w-10 h-10 bg-weaveit-500/20 rounded-xl flex items-center justify-center">
+            <DollarSign className="w-5 h-5 text-weaveit-400" />
           </div>
           <div>
             <h4 className="font-semibold text-white">Generation Cost</h4>
@@ -734,10 +531,8 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
           </div>
         </div>
         <p className="text-sm text-gray-300 mb-2">
-          {outputType === "audio" && "Audio generation requires a payment of "}
-          {outputType === "video" && "Video generation requires a payment of "}
-          {outputType === "both" && "Video + Audio generation requires a payment of "}
-          <strong className="text-weaveit-400">${getPrice().toFixed(2)}</strong> in SOL to cover AI processing costs.
+          Video generation requires a payment of <strong className="text-weaveit-400">$0.50</strong> in SOL to cover AI
+          processing costs.
         </p>
         <p className="text-xs text-gray-400">💡 Payment is processed securely through your connected Solana wallet</p>
       </div>
@@ -749,9 +544,7 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
             <FileText className="w-5 h-5 text-blue-400" />
           </div>
           <div>
-            <h4 className="font-semibold text-white">
-              💡 Tips for Better {outputType === "audio" ? "Audio" : outputType === "video" ? "Videos" : "Content"}
-            </h4>
+            <h4 className="font-semibold text-white">💡 Tips for Better Videos</h4>
             <p className="text-sm text-gray-400">Optimize your script for best results</p>
           </div>
         </div>
@@ -766,9 +559,7 @@ const ScriptForm: React.FC<ScriptFormProps> = ({ onContentGenerated }) => {
           </li>
           <li className="flex items-center space-x-2">
             <div className="w-1.5 h-1.5 bg-weaveit-500 rounded-full"></div>
-            <span>
-              {outputType === "audio" ? "Use natural speaking patterns" : "Mention specific code examples or concepts"}
-            </span>
+            <span>Mention specific code examples or concepts</span>
           </li>
           <li className="flex items-center space-x-2">
             <div className="w-1.5 h-1.5 bg-weaveit-500 rounded-full"></div>
@@ -859,15 +650,8 @@ const WalletConnect: React.FC<{ onConnect: () => void }> = ({ onConnect }) => {
 // Main WeaveIt App Component
 export default function WeaveItApp() {
   const { connected, disconnect, publicKey } = useWallet()
-  const [currentContent, setCurrentContent] = useState<{
-    url: string
-    title: string
-    outputType: OutputType
-    audioUrl?: string
-  } | null>(null) // Updated state for content
-  const [contents, setContents] = useState<
-    Array<{ id: string; title: string; url: string; outputType: OutputType; audioUrl?: string; createdAt: string }>
-  >([]) // Updated contents array
+  const [currentVideo, setCurrentVideo] = useState<{ url: string; title: string } | null>(null)
+  const [videos, setVideos] = useState<Array<{ id: string; title: string; url: string; createdAt: string }>>([])
 
   const handleConnect = () => {
     // Connection is handled by the wallet adapter
@@ -875,22 +659,21 @@ export default function WeaveItApp() {
 
   const handleDisconnect = () => {
     disconnect()
-    setCurrentContent(null)
+    setCurrentVideo(null)
   }
 
-  const handleContentGenerated = (contentUrl: string, title: string, outputType: OutputType, audioUrl?: string) => {
-    const newContent = {
+  const handleVideoGenerated = (videoUrl: string, title: string) => {
+    const newVideo = {
       id: Date.now().toString(),
       title,
-      url: contentUrl,
-      outputType,
-      audioUrl,
+      url: videoUrl,
       createdAt: new Date().toISOString(),
     }
-    setContents((prev) => [newContent, ...prev])
-    setCurrentContent({ url: contentUrl, title, outputType, audioUrl })
+    setVideos((prev) => [newVideo, ...prev])
+    setCurrentVideo({ url: videoUrl, title })
   }
 
+  // Show wallet connection if not connected
   if (!connected) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -910,6 +693,7 @@ export default function WeaveItApp() {
     )
   }
 
+  // App View
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-[#0a0e17] to-gray-900">
       {/* Header */}
@@ -922,7 +706,7 @@ export default function WeaveItApp() {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white">WeaveIt Studio</h1>
-                <p className="text-sm text-gray-400">AI Content Generator</p>
+                <p className="text-sm text-gray-400">AI Video Generator</p>
               </div>
             </div>
 
@@ -962,22 +746,20 @@ export default function WeaveItApp() {
                   <User className="w-6 h-6 text-weaveit-400" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-white">Create AI Content</h2>
-                  <p className="text-gray-400">Transform your script into engaging content</p>
+                  <h2 className="text-2xl font-bold text-white">Create Tutorial Video</h2>
+                  <p className="text-gray-400">Transform your script into an engaging video</p>
                 </div>
               </div>
-              <ScriptForm onContentGenerated={handleContentGenerated} />
+              <ScriptForm onVideoGenerated={handleVideoGenerated} />
             </div>
 
-            {/* Content Display */}
-            {currentContent && (
+            {/* Video Display */}
+            {currentVideo && (
               <div className="bg-gray-800/30 backdrop-blur-xl rounded-3xl p-8 border border-gray-700/30 shadow-2xl">
-                <ContentDisplay
-                  contentUrl={currentContent.url}
-                  audioUrl={currentContent.audioUrl}
-                  title={currentContent.title}
-                  outputType={currentContent.outputType}
-                  onClose={() => setCurrentContent(null)}
+                <VideoDisplay
+                  videoUrl={currentVideo.url}
+                  title={currentVideo.title}
+                  onClose={() => setCurrentVideo(null)}
                 />
               </div>
             )}
@@ -991,53 +773,36 @@ export default function WeaveItApp() {
                   <Video className="w-5 h-5 text-blue-400" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-white">Your Content</h3>
-                  <p className="text-sm text-gray-400">{contents.length} items created</p>
+                  <h3 className="text-xl font-bold text-white">Your Videos</h3>
+                  <p className="text-sm text-gray-400">{videos.length} videos created</p>
                 </div>
               </div>
 
-              {contents.length === 0 ? (
+              {videos.length === 0 ? (
                 <div className="text-center py-12">
                   <div className="w-20 h-20 bg-gray-700/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Video className="w-10 h-10 text-gray-500" />
                   </div>
-                  <p className="text-gray-400 mb-2">No content yet</p>
-                  <p className="text-sm text-gray-500">Create your first AI content to get started!</p>
+                  <p className="text-gray-400 mb-2">No videos yet</p>
+                  <p className="text-sm text-gray-500">Create your first tutorial video to get started!</p>
                 </div>
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
-                  {contents.map((content) => (
+                  {videos.map((video) => (
                     <div
-                      key={content.id}
+                      key={video.id}
                       className="bg-gray-800/50 rounded-xl p-4 border border-gray-700/30 hover:border-weaveit-500/30 transition-all duration-200 cursor-pointer hover:transform hover:scale-[1.02] backdrop-blur-sm group"
-                      onClick={() =>
-                        setCurrentContent({
-                          url: content.url,
-                          title: content.title,
-                          outputType: content.outputType,
-                          audioUrl: content.audioUrl,
-                        })
-                      }
+                      onClick={() => setCurrentVideo({ url: video.url, title: video.title })}
                     >
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-weaveit-500/20 rounded-lg flex items-center justify-center group-hover:bg-weaveit-500/30 transition-colors">
-                          {content.outputType === "audio" ? (
-                            <Headphones className="w-5 h-5 text-weaveit-400" />
-                          ) : content.outputType === "video" ? (
-                            <Play className="w-5 h-5 text-weaveit-400" />
-                          ) : (
-                            <VideoIcon className="w-5 h-5 text-weaveit-400" />
-                          )}
+                          <Play className="w-5 h-5 text-weaveit-400" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-white text-sm truncate">
-                            {content.title || "Untitled Content"}
+                            {video.title || "Untitled Video"}
                           </h4>
-                          <div className="flex items-center space-x-2 text-xs text-gray-400">
-                            <span>{new Date(content.createdAt).toLocaleDateString()}</span>
-                            <span>•</span>
-                            <span className="capitalize">{content.outputType}</span>
-                          </div>
+                          <p className="text-xs text-gray-400">{new Date(video.createdAt).toLocaleDateString()}</p>
                         </div>
                       </div>
                     </div>

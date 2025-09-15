@@ -23,7 +23,7 @@ export function useSolanaPayment() {
       try {
         // Get current SOL price in USD (you might want to use a real price API)
         // For now, using a placeholder conversion rate
-        const solPriceUSD = 100; // Replace with actual SOL price fetching
+        const solPriceUSD = 190; // Replace with actual SOL price fetching
         const solAmount = amountUSD / solPriceUSD;
         const lamports = Math.floor(solAmount * LAMPORTS_PER_SOL);
 
@@ -67,7 +67,7 @@ export function useSolanaPayment() {
       return data.solana.usd
     } catch (error) {
       console.error("Failed to fetch SOL price:", error)
-      return 100 // Fallback price
+      return 190 // Fallback price
     }
   }, [])
 

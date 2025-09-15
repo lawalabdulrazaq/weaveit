@@ -2,18 +2,19 @@ import ffmpeg from 'fluent-ffmpeg';
 import fs from 'fs';
 import path from 'path';
 import { CanvasRenderingContext2D, createCanvas } from 'canvas';
+// import gTTS from 'node-gtts';
 
-const gTTS = require('node-gtts');
-const gtts = gTTS('en');
+// const gTTS = require('node-gtts');
+// const gtts = gTTS('en');
 
-function generateAudioFromText(text: string, outputPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    gtts.save(outputPath, text, () => {
-      console.log(`✅ Audio saved to ${outputPath}`);
-      resolve();
-    });
-  });
-}
+// function generateAudioFromText(text: string, outputPath: string): Promise<void> {
+//   return new Promise((resolve, reject) => {
+//     gtts.save(outputPath, text, () => {
+//       console.log(`✅ Audio saved to ${outputPath}`);
+//       resolve();
+//     });
+//   });
+// }
 
 /**
  * Get the duration of the audio with better precision.
